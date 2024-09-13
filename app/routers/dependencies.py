@@ -6,46 +6,31 @@ from .. import models
 
 
 
-# Check if the teacher is assigned to the course with the student
-# def teacher_verify_course(teacher_id: int, student_id: int , course_id: int, db: Session = Depends(get_db)):
-#     course_assignment = db.query(models.StudentCourse).filter(
-#         models.StudentCourse.course_id == course_id,              
-#         models.StudentCourse.teacher_id == teacher_id,              
-#         models.StudentCourse.student_id == student_id               
-#     ).first()
 
-#     if not course_assignment:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND, 
-#             detail=f"Teacher {teacher_id} is not assigned to student {student_id} for course {course_id}"
-#         )
-    
+def teacher_verify_course(user_id: int, student_id: int, course_id: int, db: Session = Depends(get_db)):
+    # Step 1: Get the teacher_id based on user_id
+    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == user_id).first()
 
-def teacher_verify_course(teacher_id: int, student_id: int, course_id: int, db: Session = Depends(get_db)):
-    # Ensure all parameters are valid
-    if not teacher_id or not student_id or not course_id:
+    if not teacher:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Teacher ID, Student ID, and Course ID must be provided"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No teacher found with user_id {user_id}."
         )
-    
-    # Check if the student is enrolled in the course with the specified teacher
+
+    # Step 2: Verify if the teacher is assigned to the student and course
     course_assignment = db.query(models.StudentCourse).filter(
-        models.StudentCourse.course_id == course_id,
-        models.StudentCourse.teacher_id == teacher_id,
-        models.StudentCourse.student_id == student_id
+        models.StudentCourse.teacher_id == teacher.id,
+        models.StudentCourse.student_id == student_id,
+        models.StudentCourse.course_id == course_id
     ).first()
 
-    # If no assignment is found, raise an error
     if not course_assignment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Teacher {teacher_id} is not assigned to student {student_id} for course {course_id}"
+            detail=f"Teacher with user_id {user_id} (teacher_id {teacher.id}) is not assigned to student {student_id} for course {course_id}."
         )
-    
+
     return True
-
-
 
 # Ensure that who makes Create, update, delete is teacher!
 def is_teacher(user_id: int, db: Session = Depends(get_db)) -> int:

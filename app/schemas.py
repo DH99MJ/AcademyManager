@@ -240,6 +240,12 @@ class EnrollmentResponse(BaseModel):
 
 
 
+
+class EnrollmentResponseList(BaseModel):
+    total: int
+    enrollment_records: List[EnrollmentResponse]
+
+
 class StudentAttendanceResponse(BaseModel):
     id: int
     course_name: str

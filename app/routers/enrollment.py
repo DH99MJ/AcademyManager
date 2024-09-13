@@ -71,10 +71,65 @@ def enroll_student(enroll: schemas.EnrollmentRequest, db: Session = Depends(get_
     )
     
 
+# Get enrollments for a specific course
+@router.get('/enrollments/course/{course_id}', status_code=status.HTTP_200_OK, response_model=schemas.EnrollmentResponseList)
+def get_enrollments_by_course(course_id: int, db: Session = Depends(get_db)):
+    # Step 1: Ensure the course exists and fetch the course name
+    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail=f"Course with id={course_id} not found")
+    
+    course_name = course.course_name
 
-# Fetch all enrollments based on course_id
-@router.post('/enroll-student/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.EnrollmentResponse)
-def enroll_student(enroll: schemas.EnrollmentRequest, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
+    # Step 2: Fetch all enrollments for the course
+    enrollments = db.query(models.StudentCourse).filter(models.StudentCourse.course_id == course_id).all()
+    if not enrollments:
+        raise HTTPException(status_code=404, detail=f"No enrollments found for course id={course_id}")
+    
+    # Step 3: Prepare the response with enrollment details
+    enrollment_responses = []
+    for enrollment in enrollments:
+        # Fetch student details
+        student = db.query(models.Student).filter(models.Student.id == enrollment.student_id).first()
+        student_user = db.query(models.User).filter(models.User.id == student.user_id).first()
+
+        # Fetch teacher details
+        teacher = db.query(models.Teacher).filter(models.Teacher.id == enrollment.teacher_id).first()
+        teacher_user = db.query(models.User).filter(models.User.id == teacher.user_id).first()
+
+        # Build the response for each enrollment, including the course name
+        enrollment_responses.append(schemas.EnrollmentResponse(
+            message="Enrollment found.",
+            student_id=enrollment.student_id,
+            course_id=enrollment.course_id,
+            course_name=course_name,  # Include course name in the response
+            teacher_id=enrollment.teacher_id,
+            enrollment_date=enrollment.enrollment_date,
+            student_info=schemas.PersonalInfo(
+                first_name=student_user.first_name,
+                last_name=student_user.last_name,
+                email=student_user.email
+            ),
+            teacher_info=schemas.PersonalInfo(
+                first_name=teacher_user.first_name,
+                last_name=teacher_user.last_name,
+                email=teacher_user.email
+            )
+        ))
+
+    # Step 4: Return the response with total enrollments and the list of records
+    return schemas.EnrollmentResponseList(
+        total=len(enrollment_responses),
+        enrollment_records=enrollment_responses
+    )
+
+
+
+
+
+# # Fetch all enrollments based on course_id
+# @router.post('/enroll-student/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.EnrollmentResponse)
+# def enroll_student(enroll: schemas.EnrollmentRequest, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Ensure the course exists
     course = db.query(models.Course).filter(models.Course.id == enroll.course_id).first()

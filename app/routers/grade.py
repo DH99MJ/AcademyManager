@@ -30,6 +30,8 @@ def create_grade(grade: schemas.CreateGrade, db: Session = Depends(get_db), teac
             detail=f"Student with id {grade.student_id} does not exist"
         )
 
+
+
     # Use the existing function to verify if the teacher is assigned to the course and student
     teacher_verify_course(teacher_id, grade.student_id, grade.course_id, db)
 
