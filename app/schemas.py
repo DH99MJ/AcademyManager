@@ -151,6 +151,17 @@ class AttendanceResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ListAttendanceResponse(BaseModel):
+    total:int
+    message: str
+    attendance_records: List[AttendanceResponse]
+
+    class Config:
+        from_attributes = True
+
+
+
+
 class SimpleAttendanceResponse(BaseModel):
     id: int
     student_id: int
@@ -255,3 +266,11 @@ class StudentAttendanceResponse(BaseModel):
 
 class ListStudentAttendanceResponse(BaseModel):
     attendance_records: List[StudentAttendanceResponse]
+
+class TokenData(BaseModel):
+    id: Optional[int]  # Ensure this is an integer, not a string
+    role_id: Optional[int]
+    
+class Token(BaseModel):
+    access_token: str
+    token_type: str

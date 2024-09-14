@@ -8,30 +8,25 @@ from .dependencies import is_teacher, teacher_verify_course
 from datetime import date
 
 router = APIRouter(
-    prefix="/teachers",
+    prefix="/teachers-attendance",
     tags=['Attendance']
 )
 
 
 
-@router.post('/attendance/user_id/{user_id}', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceResponse)
-def create_attendance(user: schemas.AttendanceRequest, user_id: int, db: Session = Depends(get_db)):
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.AttendanceResponse)
+def create_attendance(user: schemas.AttendanceRequest, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
     
     # Fetch teacher_id from user_id
-    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == user_id).first()
+    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == teacher_id).first()
     
     if not teacher:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No teacher found with user_id={user_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No teacher found with user_id={teacher_id}")
+
 
     # Verify if the teacher is assigned to the student and course
-    course_assignment = db.query(models.StudentCourse).filter(
-        models.StudentCourse.teacher_id == teacher.id,
-        models.StudentCourse.student_id == user.student_id,
-        models.StudentCourse.course_id == user.course_id
-    ).first()
+    teacher_verify_course(teacher_id, user.student_id, user.course_id, db)
 
-    if not course_assignment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Teacher {teacher.id} is not assigned to student {user.student_id} for course {user.course_id}.")
 
     # Check if the attendance record already exists
     existing_attendance = db.query(models.Attendance).filter(
@@ -71,31 +66,22 @@ def create_attendance(user: schemas.AttendanceRequest, user_id: int, db: Session
 
 
 
-@router.put('/attendance/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.AttendanceResponse)
-def update_attendance(user_id: int, user: schemas.AttendanceRequest, db: Session = Depends(get_db)):
+@router.put('/', status_code=status.HTTP_200_OK, response_model=schemas.AttendanceResponse)
+def update_attendance(user: schemas.AttendanceRequest, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
     # Step 1: Get the teacher_id based on user_id
-    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == user_id).first()
+    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == teacher_id).first()
 
     if not teacher:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No teacher found with user_id {user_id}."
+            detail=f"No teacher found with user_id {teacher_id}."
         )
 
-    # Step 2: Verify if the teacher is assigned to the student and course
-    course_assignment = db.query(models.StudentCourse).filter(
-        models.StudentCourse.teacher_id == teacher.id,  # Now using teacher.id
-        models.StudentCourse.student_id == user.student_id,
-        models.StudentCourse.course_id == user.course_id
-    ).first()
+    # Verify if the teacher is assigned to the student and course
+    teacher_verify_course(teacher_id, user.student_id, user.course_id, db)
 
-    if not course_assignment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Teacher with user_id {user_id} (teacher_id {teacher.id}) is not assigned to student {user.student_id} for course {user.course_id}."
-        )
 
-    # Step 3: Check if the attendance record exists for this student and course
+    # Check if the attendance record exists for this student and course
     attendance_record = db.query(models.Attendance).filter(
         models.Attendance.student_id == user.student_id,
         models.Attendance.course_id == user.course_id
@@ -107,7 +93,7 @@ def update_attendance(user_id: int, user: schemas.AttendanceRequest, db: Session
             detail=f"Attendance record for student {user.student_id} in course {user.course_id} does not exist."
         )
 
-    # Step 4: Validate and update the attendance status
+    # Validate and update the attendance status
     if user.status and user.status.lower() in ['absent', 'present', 'excused', 'late']:
         attendance_record.status = user.status.lower()  # Normalize status to lowercase
     else:
@@ -116,15 +102,15 @@ def update_attendance(user_id: int, user: schemas.AttendanceRequest, db: Session
             detail=f"Invalid status. Status can only be 'absent', 'present', 'excused', or 'late'."
         )
 
-    # Step 5: Commit the changes
+    #  Commit the changes
     db.commit()
     db.refresh(attendance_record)
 
-    # Step 6: Fetch student details for the response
+    #  Fetch student details for the response
     student = db.query(models.Student).filter(models.Student.id == attendance_record.student_id).first()
     user_info = db.query(models.User).filter(models.User.id == student.user_id).first()
 
-    # Step 7: Return the updated attendance response
+    # Return the updated attendance response
     return schemas.AttendanceResponse(
         id=attendance_record.id,
         student_id=student.id,
@@ -137,54 +123,70 @@ def update_attendance(user_id: int, user: schemas.AttendanceRequest, db: Session
     )
 
 
-@router.get('/attendance/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.AttendanceResponse)
-def get_attendance_by_student_course(user_id: int, student_id: int, course_id: int, db: Session = Depends(get_db), teacher: bool = Depends(is_teacher)):
-    # Step 1: Get the teacher_id based on user_id
-    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == user_id).first()
+
+
+
+@router.get('/{course_id}', status_code=status.HTTP_200_OK, response_model=schemas.ListAttendanceResponse)
+def get_attendance_by_course(course_id: int, db: Session = Depends(get_db), teacher_id: int = Depends(is_teacher)):
+    # Verify if the teacher is assigned to the course
+    teacher = db.query(models.Teacher).filter(models.Teacher.user_id == teacher_id).first()
 
     if not teacher:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No teacher found with user_id {user_id}."
+            detail=f"No teacher found with user_id {teacher_id}."
         )
 
-    # Step 2: Verify if the teacher is assigned to the student and course
-    course_assignment = db.query(models.StudentCourse).filter(
-        models.StudentCourse.teacher_id == teacher.id,
-        models.StudentCourse.student_id == student_id,
-        models.StudentCourse.course_id == course_id
-    ).first()
+    # Fetch all attendance records for the specific course, excluding those with status "Present"
+    attendance_records = db.query(models.Attendance).filter(
+        models.Attendance.course_id == course_id,
+        models.Attendance.status != "present"  # Exclude "present" records
+    ).all()
 
-    if not course_assignment:
+    if not attendance_records:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Teacher with user_id {user_id} (teacher_id {teacher.id}) is not assigned to student {student_id} for course {course_id}."
+            detail=f"No attendance records found for course {course_id}."
         )
 
-    # Step 3: Query the attendance record for the student and course
-    attendance_record = db.query(models.Attendance).filter(
-        models.Attendance.student_id == student_id,
-        models.Attendance.course_id == course_id
-    ).first()
 
-    if not attendance_record:
+    # Count number of attendance_records for response
+    total = len(attendance_records)
+    
+    # Display the course name for response format
+    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No attendance record found for student {student_id} in course {course_id}."
+            detail=f"No course found with course_id {course_id}."
         )
+    
 
-    # Step 4: Fetch student details for the response
-    student = db.query(models.Student).filter(models.Student.id == attendance_record.student_id).first()
-    user_info = db.query(models.User).filter(models.User.id == student.user_id).first()
 
-    # Step 5: Return the fetched attendance response
-    return schemas.AttendanceResponse(
-        id=attendance_record.id,
-        student_id=student.id,
-        first_name=user_info.first_name,
-        last_name=user_info.last_name,
-        email=user_info.email,
-        course_id=attendance_record.course_id,
-        attendance_date=attendance_record.attendance_date.date() if attendance_record.attendance_date else date.today(),
-        status=attendance_record.status
+    # Fetch student and course details for the response
+    response = []
+    for record in attendance_records:
+        student = db.query(models.Student).filter(models.Student.id == record.student_id).first()
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No student found with student_id {record.student_id}."
+            )
+        user_info = db.query(models.User).filter(models.User.id == student.user_id).first()
+        response.append(schemas.AttendanceResponse(
+            id=record.id,
+            student_id=student.id,
+            first_name=user_info.first_name,
+            last_name=user_info.last_name,
+            email=user_info.email,
+            course_id=record.course_id,
+            attendance_date=record.attendance_date.date() if record.attendance_date else date.today(),
+            status=record.status
+        ))
+
+    # Return the response with total and message
+    return schemas.ListAttendanceResponse(
+        total=total,
+        message=f"Course name: {course.course_name}",
+        attendance_records=response
     )

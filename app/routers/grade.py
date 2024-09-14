@@ -7,11 +7,11 @@ from .dependencies import is_teacher, teacher_verify_course
 from datetime import date
 
 router = APIRouter(
-    prefix="/teachers",
+    prefix="/teacher-grades",
     tags=['Grades']
 )
 
-@router.post('/grades/user_id/{user_id}', status_code=status.HTTP_201_CREATED, response_model=schemas.ResponseGrade)
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.ResponseGrade)
 def create_grade(grade: schemas.CreateGrade, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
 
     # Validate that the course exists
@@ -65,8 +65,8 @@ def create_grade(grade: schemas.CreateGrade, db: Session = Depends(get_db), teac
 
 
 
-@router.put('/grades/{grade_id}/users/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.ResponseGrade)
-def update_grade(grade_id: int, user_id: int,grade: schemas.UpdateGrade, db: Session = Depends(get_db), teacher_id: int = Depends(is_teacher)):
+@router.put('/{grade_id}', status_code=status.HTTP_200_OK, response_model=schemas.ResponseGrade)
+def update_grade(grade_id: int, grade: schemas.UpdateGrade, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
 
     # Fetch the existing grade based on 'grade_id'
     existing_grade = db.query(models.Grade).filter(models.Grade.id == grade_id).first()
@@ -78,7 +78,7 @@ def update_grade(grade_id: int, user_id: int,grade: schemas.UpdateGrade, db: Ses
         )
 
     # Verify that the teacher (user_id) is assigned to the student and course
-    teacher_verify_course(user_id, existing_grade.student_id, existing_grade.course_id, db)
+    teacher_verify_course(teacher_id, existing_grade.student_id, existing_grade.course_id, db)
 
     # Update only the fields that are provided in the request
     if grade.grade is not None:
@@ -100,8 +100,8 @@ def update_grade(grade_id: int, user_id: int,grade: schemas.UpdateGrade, db: Ses
         graded_at=existing_grade.graded_at.date()  # Hardcoded conversion to date
     )
 
-@router.delete('/grades/{grade_id}/users/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_grade(grade_id: int, user_id: int, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
+@router.delete('/{grade_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_grade(grade_id: int, db: Session = Depends(get_db), teacher_id = Depends(is_teacher)):
 
     # Fetch the existing grade by 'grade_id'
     existing_grade = db.query(models.Grade).filter(models.Grade.id == grade_id).first()

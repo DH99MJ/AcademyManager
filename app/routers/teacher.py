@@ -3,7 +3,7 @@ from fastapi import FastAPI, Response, HTTPException, status, APIRouter, Depends
 from ..database import get_db
 from sqlalchemy.orm import Session
 from .. import models, schemas
-from .dependencies import is_teacher, teacher_verify_course
+from .dependencies import is_teacher, teacher_verify_course, is_admin
 from datetime import date
 
 router = APIRouter(
@@ -13,7 +13,7 @@ router = APIRouter(
 
 
 @router.post('/', response_model=schemas.TeacherResponse, status_code=status.HTTP_201_CREATED)
-def create_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_db)):
+def create_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Check if the user is already assigned as a teacher
     existing_teacher = db.query(models.Teacher).filter(models.Teacher.user_id == teacher.user_id).first()
@@ -47,7 +47,7 @@ def create_teacher(teacher: schemas.TeacherCreate, db: Session = Depends(get_db)
 
 
 @router.put('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.TeacherResponse)
-def update_teacher(id: int, update_validate: schemas.TeacherUpdate, db: Session = Depends(get_db)):
+def update_teacher(id: int, update_validate: schemas.TeacherUpdate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Fetch the existing teacher based on id
     query = db.query(models.Teacher).filter(models.Teacher.id == id)
@@ -84,7 +84,7 @@ def update_teacher(id: int, update_validate: schemas.TeacherUpdate, db: Session 
     
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_teacher(id: int, db: Session = Depends(get_db)):
+def delete_teacher(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Check if the teacher exists
     existing_user = db.query(models.Teacher).filter(models.Teacher.id == id).first()
@@ -103,7 +103,7 @@ def delete_teacher(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.get('/', status_code=status.HTTP_200_OK, response_model=List[schemas.TeacherResponse])
-def get_teachers(db: Session = Depends(get_db)):
+def get_teachers(db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     display_all_teacher = db.query(models.Teacher).all()
 
@@ -117,7 +117,7 @@ def get_teachers(db: Session = Depends(get_db)):
 
 
 @router.get('/{id}', status_code=status.HTTP_201_CREATED, response_model=schemas.TeacherResponse)
-def get_teachers(id: int, db: Session = Depends(get_db)):
+def get_teachers(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     existing_user = db.query(models.Teacher).filter(models.Teacher.id == id).first()
 

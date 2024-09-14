@@ -4,7 +4,7 @@ from ..database import get_db
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from datetime import date
-from .dependencies import is_student
+from .dependencies import is_student, is_admin
 
 router = APIRouter(
     prefix='/students',
@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.StudentResponse)
-def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Check if the user exists based on guardian email
     user = db.query(models.User).filter(models.User.email == student.guardian_email).first()
@@ -39,22 +39,37 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
     return new_student
 
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.StudentResponse)
-def get_student(id: int, db: Session = Depends(get_db)):
+# @router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.StudentResponse)
+# def get_student(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
-    # Check if student exist
-    std_exist = db.query(models.Student).filter(models.Student.id == id).first()
-    if not std_exist:
+#     # Check if student exist
+#     std_exist = db.query(models.Student).filter(models.Student.id == id).first()
+#     if not std_exist:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND, 
+#             detail=f"The student with id={id} does not exist in our database"
+#         )
+
+#     return std_exist
+
+
+
+@router.get('/{id}', status_code=status.HTTP_201_CREATED, response_model=schemas.StudentResponse)
+def get_student(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
+
+    existing_user = db.query(models.Student).filter(models.Student.id == id).first()
+
+    if not existing_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"The student with id={id} does not exist in our database"
+            detail=f"The Student with id={id} does not exist in our database"
         )
-
-    return std_exist
+    
+    return existing_user
 
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_student(id: int, db: Session = Depends(get_db)):
+def delete_student(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Query that check if user exists based on id
     delete_query = db.query(models.Student).filter(models.Student.id == id)
@@ -73,7 +88,7 @@ def delete_student(id: int, db: Session = Depends(get_db)):
 
 
 @router.put('/{id}', response_model=schemas.StudentUpdatedResponse)
-def update_student(student: schemas.StudentUpdate, id: int, db: Session = Depends(get_db)):
+def update_student(student: schemas.StudentUpdate, id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
     
     # Get the existing student record
     std_exist = db.query(models.Student).filter(models.Student.id == id)
@@ -133,9 +148,8 @@ def update_student(student: schemas.StudentUpdate, id: int, db: Session = Depend
 
     return student_data
 
-
 @router.get('/', status_code=status.HTTP_200_OK, response_model=List[schemas.StudentResponse])
-def get_students(db: Session = Depends(get_db)):
+def get_students(db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     display_all_student = db.query(models.Student).all()
 
@@ -148,93 +162,84 @@ def get_students(db: Session = Depends(get_db)):
     return display_all_student
 
 
-@router.get('/{id}', status_code=status.HTTP_201_CREATED, response_model=schemas.StudentResponse)
-def get_student(id: int, db: Session = Depends(get_db)):
+# @router.get('/grades/user_id/{user_id}', response_model=List[schemas.ResponseGrade])
+# def get_own_grades(user_id: int, db: Session = Depends(get_db), student_id = Depends(is_student) ):
 
-    existing_user = db.query(models.Student).filter(models.Student.id == id).first()
+#     # Fetch grades and course information for the specific student
+#     grades = db.query(
+#         models.Grade.id,
+#         models.Grade.student_id,
+#         models.Grade.course_id,
+#         models.Grade.grade,
+#         models.Grade.comments,
+#         models.Grade.graded_at,
+#         models.Course.course_name  # Fetch course_name from the Course table
+#     ).join(
+#         models.Course, models.Course.id == models.Grade.course_id  # Join with the Course table
+#     ).filter(
+#         models.Grade.student_id == user_id
+#     ).all()
 
-    if not existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"The Student with id={id} does not exist in our database"
-        )
-    
-    return existing_user
+#     # Check if any grades are returned
+#     if not grades:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No grades found for the student")
 
-
-@router.get('/grades/user_id/{user_id}', response_model=List[schemas.ResponseGrade])
-def get_own_grades(user_id: int, db: Session = Depends(get_db)):
-
-    # Fetch grades and course information for the specific student
-    grades = db.query(
-        models.Grade.id,
-        models.Grade.student_id,
-        models.Grade.course_id,
-        models.Grade.grade,
-        models.Grade.comments,
-        models.Grade.graded_at,
-        models.Course.course_name  # Fetch course_name from the Course table
-    ).join(
-        models.Course, models.Course.id == models.Grade.course_id  # Join with the Course table
-    ).filter(
-        models.Grade.student_id == user_id
-    ).all()
-
-    # Check if any grades are returned
-    if not grades:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No grades found for the student")
-
-    # Map to ResponseGrade schema
-    return [
-        schemas.ResponseGrade(
-            id=grade.id,
-            student_id=grade.student_id,
-            course_id=grade.course_id,
-            course_name=grade.course_name,
-            grade=grade.grade,
-            comments=grade.comments,
-            graded_at=grade.graded_at.date()
-        )
-        for grade in grades
-    ]
+#     # Map to ResponseGrade schema
+#     return [
+#         schemas.ResponseGrade(
+#             id=grade.id,
+#             student_id=grade.student_id,
+#             course_id=grade.course_id,
+#             course_name=grade.course_name,
+#             grade=grade.grade,
+#             comments=grade.comments,
+#             graded_at=grade.graded_at.date()
+#         )
+#         for grade in grades
+#     ]
 
 
-@router.get('/attendance/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.ListStudentAttendanceResponse)
-def get_student_attendance(user_id: int, db: Session = Depends(get_db), student: bool = Depends(is_student)):
-    # Fetch the student record using user_id
-    student_record = db.query(models.Student).filter(models.Student.user_id == user_id).first()
 
-    if not student_record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No student found with user_id {user_id}"
-        )   
 
-    # Fetch the attendance records for the student
-    attendance_records = db.query(
-        models.Attendance, 
-        models.Course.course_name
-    ).join(
-        models.Course, models.Course.id == models.Attendance.course_id
-    ).filter(
-        models.Attendance.student_id == student_record.id
-    ).all()
 
-    if not attendance_records:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No attendance records found for student {student_record.id}"
-        )
+# @router.get('/attendance/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.ListStudentAttendanceResponse)
+# def get_student_attendance(user_id: int, db: Session = Depends(get_db), student: bool = Depends(is_student)):
+#     # Fetch the student record using user_id
+#     student_record = db.query(models.Student).filter(models.Student.user_id == user_id).first()
 
-    # Format the response
-    attendance_list = [
-        schemas.StudentAttendanceResponse(
-            id=attendance.id,
-            course_name=course_name,
-            attendance_date=attendance.attendance_date.date() if attendance.attendance_date else date.today(),
-            status=attendance.status
-        )
-        for attendance, course_name in attendance_records
-    ]
+#     if not student_record:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"No student found with user_id {user_id}"
+#         )   
 
-    return schemas.ListStudentAttendanceResponse(attendance_records=attendance_list)
+#     # Fetch the attendance records for the student
+#     attendance_records = db.query(
+#         models.Attendance, 
+#         models.Course.course_name
+#     ).join(
+#         models.Course, models.Course.id == models.Attendance.course_id
+#     ).filter(
+#         models.Attendance.student_id == student_record.id
+#     ).all()
+
+#     if not attendance_records:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"No attendance records found for student {student_record.id}"
+#         )
+
+#     # Format the response
+#     attendance_list = [
+#         schemas.StudentAttendanceResponse(
+#             id=attendance.id,
+#             course_name=course_name,
+#             attendance_date=attendance.attendance_date.date() if attendance.attendance_date else date.today(),
+#             status=attendance.status
+#         )
+#         for attendance, course_name in attendance_records
+#     ]
+
+#     return schemas.ListStudentAttendanceResponse(attendance_records=attendance_list)
+
+

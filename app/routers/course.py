@@ -9,13 +9,13 @@ from datetime import date
 
 
 router = APIRouter(
-    prefix="/admin",
+    prefix="/admin-course",
     tags=['Course']
-)
+)   
 
 
-@router.post('/course/user_id/{user_id}', status_code=status.HTTP_201_CREATED, response_model=schemas.CourseResponse)
-def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db), user_id: int = Depends(is_admin)):
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.CourseResponse)
+def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Validate if the course already exists
     course_exist = db.query(models.Course).filter(models.Course.course_code == course.course_code).first()
@@ -51,7 +51,7 @@ def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db), u
     )
 
 
-@router.get('/course/{course_id}/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.CourseResponse)
+@router.get('/{course_id}', status_code=status.HTTP_200_OK, response_model=schemas.CourseResponse)
 def get_course_by_id(course_id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Ensure the course is existing
@@ -88,8 +88,8 @@ def get_course_by_id(course_id: int, db: Session = Depends(get_db), admin_id = D
     )
 
 
-@router.put('/course/{course_id}/user_id/{user_id}', status_code=status.HTTP_200_OK, response_model=schemas.CourseResponse)
-def update_course(course_update: schemas.CourseUpdate, course_id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
+@router.put('/{course_id}', status_code=status.HTTP_200_OK, response_model=schemas.CourseResponse)
+def update_course(course_id: int, course_update: schemas.CourseUpdate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Fetch the course to be updated
     existing_course = db.query(models.Course).filter(models.Course.id == course_id).first()
@@ -138,7 +138,7 @@ def update_course(course_update: schemas.CourseUpdate, course_id: int, db: Sessi
     )
 
 
-@router.delete('/course/{course_id}/user_id/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{course_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_course(course_id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Ensure the course exist
@@ -154,7 +154,7 @@ def delete_course(course_id: int, db: Session = Depends(get_db), admin_id = Depe
 
 
 
-@router.get('/courses', status_code=status.HTTP_200_OK, response_model=schemas.ListAllCourses)
+@router.get('/', status_code=status.HTTP_200_OK, response_model=schemas.ListAllCourses)
 def get_all_courses(db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     # Query for all courses, join with teacher and user to get teacher's user details

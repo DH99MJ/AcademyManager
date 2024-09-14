@@ -1,7 +1,8 @@
-from .. import models, schemas
+from .. import models, schemas, utils, oauth2
 from fastapi import FastAPI, Response, HTTPException, status, APIRouter, Depends
 from ..database import get_db
 from sqlalchemy.orm import Session
+from .dependencies import is_admin
 
 
 router = APIRouter(
@@ -11,16 +12,19 @@ router = APIRouter(
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.UserCreatedResponse)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
+    
+    # hashed password before storing it
+    hashed_password = utils.hash_password(user.password_hash)
+    user.password_hash = hashed_password
 
     # Check if already user exist by 'Email'
     user_exist = db.query(models.User).filter(models.User.email == user.email).first()
     if user_exist:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=f"Email already registered")
-    
 
-    new_user = models.User(**user.dict()) # Create a new user object from the schema
+    new_user = models.User(**user.dict())  # Create a new user object from the schema
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -29,7 +33,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.UserCreatedResponse)
-def get_user(id: int, db: Session = Depends(get_db)):
+def get_user(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     user = db.query(models.User).filter(models.User.id == id).first()
 
@@ -44,8 +48,9 @@ def get_user(id: int, db: Session = Depends(get_db)):
 
 
 @router.put('/{id}', response_model=schemas.UserUpdatedResponse)
-def update_user(user: schemas.UserUpdate, id: int, db: Session = Depends(get_db)):
+def update_user(user: schemas.UserUpdate, id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
     
+
     # Check if user exist
     user_query = db.query(models.User).filter(models.User.id == id)
     user_to_update = user_query.first()
@@ -76,7 +81,7 @@ def update_user(user: schemas.UserUpdate, id: int, db: Session = Depends(get_db)
     return updated_user
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(id: int, db: Session = Depends(get_db)):
+def delete_user(id: int, db: Session = Depends(get_db), admin_id = Depends(is_admin)):
 
     user_query = db.query(models.User).filter(models.User.id == id).first()
 
