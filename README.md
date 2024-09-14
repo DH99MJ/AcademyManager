@@ -12,62 +12,62 @@ AcademyManager is a comprehensive Student Information System (SIS) designed to s
 # **API Endpoints**
 Here is a description of all the available routes in the FastAPI system:
 
-**User Routes**
+# **User Routes**
 - **POST /users/** - Create a new user [Admin].
 - **GET /users/{id}** - Get user details by ID [Admin].
 - **PUT /users/{id}** - Update a user by ID [Admin].
 - **DELETE /users/{id}** - Delete a user by ID [Admin].
 
-**Student Routes**
+# **Student Routes**
 - **POST /students/** - Create a new student [Admin].
 - **GET /students/** - Get all students [Admin].
 - **GET /students/{id}** - Get student details by ID [Admin].
 - **PUT /students/{id}** - Update student information by ID [Admin].
 - **DELETE /students/{id}** - Delete a student by ID [Admin].
 
-**Teacher Routes**
+# **Teacher Routes**
 - **POST /teachers/** - Create a new teacher [Admin].
 - **GET /teachers/** - Get all teachers [Admin].
 - **GET /teachers/{id}** - Get teacher details by ID [Admin].
 - **PUT /teachers/{id}** - Update teacher details by ID [Admin].
 - **DELETE /teachers/{id}** - Delete a teacher by ID [Admin].
 
-**Attendance Routes**
+# **Attendance Routes**
 - **POST /teachers-attendance/** - Create attendance for a student [Teacher].
 - **PUT /teachers-attendance/** - Update attendance records [Teacher].
 - **GET /teachers-attendance/{course_id}** - Get all attendance records by course [Teacher].
 
-**Course Routes**
+# **Course Routes**
 - **POST /admin-course/** - Create a new course [Admin].
 - **GET /admin-course/** - Get all courses [Admin].
 - **GET /admin-course/{course_id}** - Get course details by ID [Admin].
 - **PUT /admin-course/{course_id}** - Update course details by ID [Admin].
 - **DELETE /admin-course/{course_id}** - Delete a course by ID [Admin].
 
-**Enrollment Routes**
+# **Enrollment Routes**
 - **POST /admin/enroll-student/** - Enroll a student in a course [Admin].
 - **GET /admin/enroll-student/{course_id}** - Get enrollments by course ID [Admin].
 
-**Grade Routes**
+# **Grade Routes**
 - **POST /teacher-grades/** - Create a grade for a student [Teacher].
 - **PUT /teacher-grades/{grade_id}** - Update a student's grade [Teacher].
 - **DELETE /teacher-grades/{grade_id}** - Delete a student's grade [Teacher].
 
-**Authentication Routes**
+# **Authentication Routes**
 - **POST /Login/** - User login to get access tokens [Admin, Teacher, and Student].
 
-**Student Attendance & Grades Routes**
+# **Student Attendance & Grades Routes**
 - **GET /student-attendance/** - Get a student's attendance [Student].
 - **GET /student-grades/** - Get a student's grades [Student].
 
-**Technologies Used**
+# **Technologies Used**
 - Backend Framework: FastAPI
 - Database: PostgreSQL
 - Authentication: OAuth2 (planned for secure login and role-based access control)
 - ORM: SQLAlchemy
 - Database Migrations: Alembic
 
-**Installation**
+# **Installation**
 Clone the repository:
 
 ```
@@ -117,10 +117,10 @@ Start the FastAPI server:
 uvicorn app.main:app --reload
 ```
 
-**Setting Up Initial Data**
+# **Setting Up Initial Data**
 After cloning the project, you’ll need to set up the initial roles and users for the system to function correctly:
 
-1. **Insert Roles into the roles Table**
+# 1. **Insert Roles into the roles Table**
 You need to insert the following roles into the roles table first:
 
 ```
@@ -129,7 +129,7 @@ INSERT INTO roles (id, role_name) VALUES (2, 'Teacher');
 INSERT INTO roles (id, role_name) VALUES (3, 'Student');
 ```
 
-2. **Hash the Password**
+# 2. **Hash the Password**
 Since passwords are hashed, you need to hash any passwords before inserting users into the database. Use the project’s utility to generate a hashed password:
 
 ```python
@@ -138,7 +138,7 @@ hashed_password = hash_password("your_plain_password")
 print(hashed_password)
 ```
 
-3. **Insert Users**
+# 3. **Insert Users**
 After generating the hashed password, you can insert users into the database:
 
 ```
@@ -148,9 +148,9 @@ VALUES ('admin@example.com', 'your_hashed_password_here', 'Admin', 'User', 1);
 
 For Teachers, use role_id = 2, and for Students, use role_id = 3.
 
-**Usage**
+# **Usage**
 - Teachers can log in to manage student attendance, grades, and course enrollments.
 - Students can log in to view their academic progress, including attendance and grades.
 
-**Future Improvements**
+# **Future Improvements**
 - Create a responsive frontend for a better user experience.
