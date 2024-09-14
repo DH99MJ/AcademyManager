@@ -1,5 +1,5 @@
 
-**AcademyManager**
+# **AcademyManager**
 AcademyManager is a comprehensive Student Information System (SIS) designed to streamline academic operations in educational institutions. Built with FastAPI and PostgreSQL, it allows flexible management of student enrollment, course tracking, attendance, and grading. The system is designed to be scalable and adaptable to various institutional needs.
 
 **Key Features**
