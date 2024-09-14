@@ -2,14 +2,14 @@
 # **AcademyManager**
 AcademyManager is a comprehensive Student Information System (SIS) designed to streamline academic operations in educational institutions. Built with FastAPI and PostgreSQL, it allows flexible management of student enrollment, course tracking, attendance, and grading. The system is designed to be scalable and adaptable to various institutional needs.
 
-**Key Features**
+# **Key Features**
 - **Student Enrollment**: Manage student enrollments in courses, including assigning teachers and tracking course registrations.
 - **Course Management**: Create, update, and delete courses. Teachers are assigned specific courses, and students can be enrolled in those courses.
 - **Attendance Tracking**: Teachers can create, update, and track attendance for students, including marking students as 'Present', 'Absent', 'Excused', or 'Late'.
 - **Grade Management**: Teachers can manage grades for their assigned students, allowing students to view their grades and performance across different courses.
 - **Student Portal**: Students can view their attendance, course enrollments, and grades through a dedicated interface.
 
-**API Endpoints**
+# **API Endpoints**
 Here is a description of all the available routes in the FastAPI system:
 
 **User Routes**
